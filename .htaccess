@@ -1,0 +1,14 @@
+# Block direct browser access to config files
+<Files "db.php">
+    Order Allow,Deny
+    Deny from all
+</Files>
+
+# Clean URLs (optional but good for SEO section of report)
+RewriteEngine On
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteCond %{REQUEST_FILENAME} !-d
+
+# Redirect HTTP to HTTPS (for when deployed online)
+# RewriteCond %{HTTPS} off
+# RewriteRule ^(.*)$ https://%{HTTP_HOST}%{REQUEST_URI} [L,R=301]
