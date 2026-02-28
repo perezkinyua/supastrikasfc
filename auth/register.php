@@ -1,5 +1,5 @@
 <?php
-require_once '../includes/auth_guard.php';
+require_once '../include/auth_guard.php';
 require_once '../config/db.php';
 
 // Redirect if already logged in
@@ -72,6 +72,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 }
 
 $csrf = generate_csrf_token();
+
+include("../include/header.php");
 ?>
 
 <!-- Your teammate adds their HTML form design below here -->
@@ -81,3 +83,35 @@ $csrf = generate_csrf_token();
 <!-- name="password", name="confirm_password" -->
 <!-- A hidden input: <input type="hidden" name="csrf_token" value="<?= $csrf ?>"> -->
 <!-- A submit button -->
+
+<section class="login-form">
+    <h2>Member Login</h2>
+
+    <?php if (!empty($errors)): ?>
+    <div style="color: red; border: 1px solid red; padding: 10px; margin-bottom: 10px;">
+        <ul>
+            <?php foreach ($errors as $error): ?>
+                <li><?= h($error) ?></li>
+            <?php endforeach; ?>
+        </ul>
+    </div>
+<?php endif; ?>
+
+    <form method="POST" action="register.php">
+        <input type="hidden" name="csrf_token" value="<?= $csrf ?>">
+        <input type="text" name="username" placeholder="Username" required>
+        <input type="text" name="email" placeholder="Email" required>
+        <input type="password" name="password" placeholder="Password" required>
+        <input type="password" name="confirm_password" placeholder="Confirm Your Password" required>
+        <button type="submit">Login</button>
+    </form>
+
+    <?php if ($success): ?>
+    <div style="color: green; border: 1px solid green; padding: 10px;">
+        <?= h($success) ?> <a href="login.php">Log in here</a>
+    </div>
+<?php endif; ?>
+
+</section>
+
+<?php include("../include/footer.php"); ?>

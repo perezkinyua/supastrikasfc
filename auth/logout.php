@@ -1,5 +1,5 @@
 <?php
-require_once '../includes/auth_guard.php';
+require_once '../supastrikasfc/include/auth_guard.php';
 
 // Clear all session data
 session_unset();

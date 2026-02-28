@@ -1,5 +1,5 @@
 <?php
-require_once '../includes/auth_guard.php';
+require_once '../include/auth_guard.php';
 require_once '../config/db.php';
 require_login();
 
@@ -142,3 +142,50 @@ ADMIN SECTION (wrap in: if ($is_admin): )
   onclick="return confirm('Delete this match?')"
 endif;
 -->
+
+<?php
+include '../include/header.php';
+?>
+
+<main class="matches-page">
+    <?php if ($success): ?><p class="alert-success"><?= h($success) ?></p><?php endif; ?>
+    <?php foreach ($errors as $error): ?><p class="alert-error"><?= h($error) ?></p><?php endforeach; ?>
+
+    <section>
+        <h2>Upcoming Fixtures</h2>
+        <?php while($row = $upcoming->fetch_assoc()): ?>
+            <div class="match-row">
+                <span><?= h($row['match_date']) ?></span>
+                <strong>vs <?= h($row['opponent']) ?></strong>
+                <span>@ <?= h($row['venue']) ?></span>
+                
+                <?php if ($is_admin): ?>
+                    <form method="POST" style="display:inline;">
+                        <input type="hidden" name="csrf_token" value="<?= $csrf ?>">
+                        <input type="hidden" name="match_id" value="<?= $row['id'] ?>">
+                        <input type="hidden" name="action" value="delete_match">
+                        <button type="submit" onclick="return confirm('Delete match?')">Delete</button>
+                    </form>
+                <?php endif; ?>
+            </div>
+        <?php endwhile; ?>
+    </section>
+
+    <?php if ($is_admin): ?>
+        <section class="admin-panel">
+            <h3>Add New Match</h3>
+            <form method="POST">
+                <input type="hidden" name="csrf_token" value="<?= $csrf ?>">
+                <input type="hidden" name="action" value="create_match">
+                <input type="text" name="opponent" placeholder="Opponent Name" required>
+                <input type="date" name="match_date" required>
+                <input type="text" name="venue" placeholder="Stadium Name">
+                <select name="status">
+                    <option value="upcoming">Upcoming</option>
+                    <option value="completed">Completed</option>
+                </select>
+                <button type="submit">Add Match</button>
+            </form>
+        </section>
+    <?php endif; ?>
+</main>

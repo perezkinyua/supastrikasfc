@@ -5,19 +5,17 @@ if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
 
-// Call this function on any page that requires login
 function require_login() {
     if (!isset($_SESSION['user_id'])) {
-        header("Location: /supastrikas/auth/login.php");
+        header("Location: /supastrikasfc/auth/login.php");
         exit();
     }
 }
 
-// Call this on admin-only pages
 function require_admin() {
     require_login();
     if ($_SESSION['role'] !== 'admin') {
-        header("Location: /supastrikas/pages/home.php");
+        header("Location: /supastrikasfc/pages/home.php");
         exit();
     }
 }

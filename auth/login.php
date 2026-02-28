@@ -1,6 +1,7 @@
 <?php
-require_once '../includes/auth_guard.php';
+require_once '../include/auth_guard.php';
 require_once '../config/db.php';
+include("../include/header.php");
 
 if (isset($_SESSION['user_id'])) {
     header("Location: ../pages/home.php");
@@ -60,3 +61,18 @@ $csrf = generate_csrf_token();
 <!-- Teammate adds form HTML below -->
 <!-- Inputs needed: name="email", name="password" -->
 <!-- Hidden: <input type="hidden" name="csrf_token" value="<?= $csrf ?>"> -->
+
+
+<section class="login-form">
+    <h2>Member Login</h2>
+
+    <form method="POST">
+        <input type="hidden" name="csrf_token" value="<?= $csrf ?>">
+        <input type="text" name="email" placeholder="Email" required>
+        <input type="password" name="password" placeholder="Password" required>
+        <button type="submit">Login</button>
+        <p>Don't have an account? <a href="register.php">Register here</a></p>
+    </form>
+</section>
+
+<?php include("../include/footer.php"); ?>
