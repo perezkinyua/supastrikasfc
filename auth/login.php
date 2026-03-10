@@ -47,7 +47,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 '/'
             );
 
-            header("Location: ../pages/home.php");
+            header("Location: ../pages/news.php");
             exit();
         } else {
             // Vague error on purpose

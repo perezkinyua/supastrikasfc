@@ -1,182 +1,77 @@
 <?php
 require_once '../include/auth_guard.php';
 require_once '../config/db.php';
-require_login();  // Redirect to login if not authenticated
+require_login();  // Make sure the user is logged in
+include "../include/header.php";
 
-$user_id = $_SESSION['user_id'];
-$errors  = [];
-$success = '';
+session_start(); // Needed to get messages from update_profile.php
 
-// ============================================================
-// DELETE ACCOUNT
-// ============================================================
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])
-    && $_POST['action'] === 'delete_account') {
+$user_id = $_SESSION['user_id'] ?? null;
 
-    validate_csrf_token($_POST['csrf_token'] ?? '');
+// Initialize variables
+$errors = $_SESSION['errors'] ?? [];
+$success = $_SESSION['success'] ?? '';
+unset($_SESSION['errors'], $_SESSION['success']); // clear session messages
+$user = [];
 
-    $stmt = $conn->prepare("DELETE FROM users WHERE id = ?");
+// Fetch user data from the database
+if ($user_id) {
+    $stmt = $conn->prepare("SELECT username, full_name, email, favourite_player, bio, role, created_at FROM users WHERE id = ?");
     $stmt->bind_param("i", $user_id);
     $stmt->execute();
-    $stmt->close();
+    $result = $stmt->get_result();
+    $user = $result->fetch_assoc();  // associative array or null
 
-    // Log them out after deletion
-    session_unset();
-    session_destroy();
-    setcookie('theme', '', time() - 3600, '/');
-    header("Location: index.php?msg=account_deleted");
-    exit();
+    if (!$user) {
+        $errors[] = "User not found.";
+    }
+} else {
+    $errors[] = "Invalid session. Please login again.";
 }
-
-// ============================================================
-// UPDATE PROFILE
-// ============================================================
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])
-    && $_POST['action'] === 'update_profile') {
-
-    validate_csrf_token($_POST['csrf_token'] ?? '');
-
-    $full_name        = trim($_POST['full_name'] ?? '');
-    $bio              = trim($_POST['bio'] ?? '');
-    $favourite_player = trim($_POST['favourite_player'] ?? '');
-    $theme            = in_array($_POST['theme'], ['light', 'dark'])
-                        ? $_POST['theme'] : 'light';
-    $new_email        = trim($_POST['email'] ?? '');
-
-    // Validate
-    if (!filter_var($new_email, FILTER_VALIDATE_EMAIL)) {
-        $errors[] = "Please enter a valid email address.";
-    }
-    if (strlen($full_name) > 100) {
-        $errors[] = "Full name is too long.";
-    }
-
-    // Check email not taken by someone else
-    if (empty($errors)) {
-        $stmt = $conn->prepare(
-            "SELECT id FROM users WHERE email = ? AND id != ?"
-        );
-        $stmt->bind_param("si", $new_email, $user_id);
-        $stmt->execute();
-        $stmt->store_result();
-        if ($stmt->num_rows > 0) {
-            $errors[] = "That email is already used by another account.";
-        }
-        $stmt->close();
-    }
-
-    if (empty($errors)) {
-        $stmt = $conn->prepare(
-            "UPDATE users
-             SET full_name=?, bio=?, favourite_player=?,
-                 theme_preference=?, email=?
-             WHERE id=?"
-        );
-        $stmt->bind_param(
-            "sssssi",
-            $full_name, $bio, $favourite_player, $theme, $new_email, $user_id
-        );
-        if ($stmt->execute()) {
-            // Update session and cookie to reflect changes
-            $_SESSION['email'] = $new_email;
-            setcookie('theme', $theme, time() + (86400 * 30), '/');
-            $success = "Profile updated successfully!";
-        } else {
-            $errors[] = "Update failed. Please try again.";
-        }
-        $stmt->close();
-    }
-}
-
-// ============================================================
-// READ — Fetch current user data (runs on every page load)
-// ============================================================
-$stmt = $conn->prepare(
-    "SELECT username, email, full_name, bio, favourite_player,
-            profile_photo, theme_preference, role, created_at
-     FROM users WHERE id = ?"
-);
-$stmt->bind_param("i", $user_id);
-$stmt->execute();
-$result = $stmt->get_result();
-$user   = $result->fetch_assoc();
-$stmt->close();
-
-$csrf = generate_csrf_token();
 ?>
 
-<!-- 
-WHAT TO TELL YOUR TEAMMATE WHO DESIGNS THIS PAGE:
+<!DOCTYPE html>
+<html>
+<head>
+    <title>My Profile - Juja Titans FC</title>
+</head>
+<body>
+<h1>My Profile</h1>
 
-They need two forms:
+<?php if (!empty($errors)): ?>
+    <div class="errors">
+        <?php foreach ($errors as $error): ?>
+            <p style="color:red;"><?= htmlspecialchars($error) ?></p>
+        <?php endforeach; ?>
+    </div>
+<?php endif; ?>
 
-FORM 1 — Edit Profile:
-action="" method="POST"
-hidden: name="action" value="update_profile"
-hidden: name="csrf_token" value="<?= $csrf ?>"
-inputs: name="full_name" value="<?= h($user['full_name']) ?>"
-        name="email" value="<?= h($user['email']) ?>"
-        name="bio" (textarea) — <?= h($user['bio']) ?>
-        name="favourite_player" value="<?= h($user['favourite_player']) ?>"
-        name="theme" (select: light/dark) selected="<?= h($user['theme_preference']) ?>"
+<?php if ($success): ?>
+    <p style="color:green;"><?= htmlspecialchars($success) ?></p>
+<?php endif; ?>
 
-FORM 2 — Delete Account (separate form, needs confirm dialog in JS):
-action="" method="POST"
-hidden: name="action" value="delete_account"
-hidden: name="csrf_token" value="<?= $csrf ?>"
-A delete button — red, with onclick="return confirm('Are you sure?')"
+<?php if (!empty($user)): ?>
+    <h2>Account Information</h2>
+    <p><strong>Username:</strong> <?= htmlspecialchars($user['username']) ?></p>
+    
+    <p><strong>Email:</strong> <?= htmlspecialchars($user['email']) ?></p>
+    
+    <p><strong>Member Since:</strong> <?= date("F Y", strtotime($user['created_at'])) ?></p>
 
-Display (Read) section shows:
-- <?= h($user['username']) ?>
-- <?= h($user['full_name']) ?>
-- <?= h($user['email']) ?>
-- Member since: <?= date('F Y', strtotime($user['created_at'])) ?>
-- Role badge: <?= h($user['role']) ?>
--->
+    <h3>Edit Profile</h3>
+    <form method="post" action="update_profile.php">
+        <label>username:</label><br>
+        <input type="text" name="username" value="<?= htmlspecialchars($user['full_name']) ?>"><br><br>
 
-<?php
-include '../include/header.php';
-?>
+        <label>Email:</label><br>
+        <input type="email" name="email" value="<?= htmlspecialchars($user['email']) ?>"><br><br>
 
-<main class="matches-page">
-    <?php if ($success): ?><p class="alert-success"><?= h($success) ?></p><?php endif; ?>
-    <?php foreach ($errors as $error): ?><p class="alert-error"><?= h($error) ?></p><?php endforeach; ?>
+        <button type="submit">Update Profile</button>
+    </form>
 
-    <section>
-        <h2>Upcoming Fixtures</h2>
-        <?php while($row = $upcoming->fetch_assoc()): ?>
-            <div class="match-row">
-                <span><?= h($row['match_date']) ?></span>
-                <strong>vs <?= h($row['opponent']) ?></strong>
-                <span>@ <?= h($row['venue']) ?></span>
-                
-                <?php if ($is_admin): ?>
-                    <form method="POST" style="display:inline;">
-                        <input type="hidden" name="csrf_token" value="<?= $csrf ?>">
-                        <input type="hidden" name="match_id" value="<?= $row['id'] ?>">
-                        <input type="hidden" name="action" value="delete_match">
-                        <button type="submit" onclick="return confirm('Delete match?')">Delete</button>
-                    </form>
-                <?php endif; ?>
-            </div>
-        <?php endwhile; ?>
-    </section>
-
-    <?php if ($is_admin): ?>
-        <section class="admin-panel">
-            <h3>Add New Match</h3>
-            <form method="POST">
-                <input type="hidden" name="csrf_token" value="<?= $csrf ?>">
-                <input type="hidden" name="action" value="create_match">
-                <input type="text" name="opponent" placeholder="Opponent Name" required>
-                <input type="date" name="match_date" required>
-                <input type="text" name="venue" placeholder="Stadium Name">
-                <select name="status">
-                    <option value="upcoming">Upcoming</option>
-                    <option value="completed">Completed</option>
-                </select>
-                <button type="submit">Add Match</button>
-            </form>
-        </section>
-    <?php endif; ?>
-</main>
+    <form method="post" action="delete_account.php" onsubmit="return confirm('Are you sure?');">
+        <button type="submit" name="delete">Delete Account</button>
+    </form>
+<?php endif; ?>
+</body>
+</html>
